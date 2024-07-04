@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iostream>
 
-#define TAPESIZE 64
+#define TAPESIZE 32
 
 class TapeSegment {
 private:
@@ -141,6 +141,23 @@ public:
         std::get<2>(this->delta[state - 1][color]) = nextstate;
     }
 
+    std::string transitionstr(unsigned state, unsigned color) {
+        std::stringstream ss;
+        ss << std::get<0>(this->delta[state - 1][color]);
+        char transition = std::get<1>(this->delta[state - 1][color]);
+        if (transition == -1) {
+            ss << "L";
+        }
+        else if (transition == 1) {
+            ss << "R";
+        }
+        else {
+            ss << "N";
+        }
+        ss << std::get<2>(this->delta[state - 1][color]);
+        return ss.str();
+    }
+
     unsigned getWriteWith(unsigned state, unsigned color) {
         return std::get<0>(this->delta[state - 1][color]);
     }
@@ -179,20 +196,22 @@ private:
     int seq;
     int pos;
     unsigned state;
-    unsigned steps;
-    std::vector<unsigned> score;
-    int minseq[2] = {0,0};
-    int maxseq[2] = {0,0};
+    long unsigned long steps;
+    std::vector<unsigned long long> score;
+    std::vector<unsigned long long> best;
+    int minseq[2] = {0,TAPESIZE / 2};
+    int maxseq[2] = {0,TAPESIZE / 2};
 public:
     TuringMachine(InstructionSet *instructions) {
-        this->pos = 0;
+        this->pos = TAPESIZE / 2;
         this->seq = 0;
         this->tape = new Tape();
         this->cursegment = this->tape->getStart();
         this->instructionset = instructions;
         this->state = 1;
-        this->steps = 0;
-        this->score = std::vector<unsigned>(this->instructionset->getColors(), 0);
+        this->steps = 0LL;
+        this->score = std::vector<unsigned long long>(this->instructionset->getColors(), 0);
+        this->best = std::vector<unsigned long long>(this->instructionset->getColors(), 0);
     }
 
     InstructionSet *getInstructionSet() {
@@ -206,6 +225,9 @@ public:
         }
         this->cursegment->write(value, pos);
         this->score[value]++;
+        if (this->score[value] > this->best[value]) {
+            this->best[value] = this->score[value];
+        }
     }
 
     void moveLeft() {
@@ -266,7 +288,7 @@ public:
         return this->pos;
     }
 
-    unsigned getSteps() {
+    unsigned long long getSteps() {
         return this->steps;
     }
 
@@ -286,8 +308,12 @@ public:
         return this->maxseq;
     }
 
-    std::vector<unsigned> getScore() {
+    std::vector<unsigned long long> getScore() {
         return this->score;
+    }
+
+    std::vector<unsigned long long> getBest() {
+        return this->best;
     }
 
     unsigned step() {
@@ -328,6 +354,10 @@ public:
         }
         ss << "\tState: " << this->state << "\tPosition: " << this->seq << "~" << this->pos << "\n";
         return ss.str();
+    }
+
+    std::string getTransitionStr() {
+        return this->state ? this->instructionset->transitionstr(this->state, this->getColor()) : "HALT";
     }
 };
 
