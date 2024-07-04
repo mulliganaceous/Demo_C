@@ -87,7 +87,7 @@ void display() {
     instructions6->setInstruction(6,0,0,+1,3);
     instructions6->setInstruction(6,1,0,+1,5);
 
-    TuringMachine *busybeaver = new TuringMachine(instructions6);
+    TuringMachine *busybeaver = new TuringMachine(instructions5);
     Tape *tape;
     std::cout << busybeaver->toString() << "\n";
     usleep(1000000);
@@ -97,11 +97,17 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)
     int i = 0;
     int period = TAPESIZE/2;
-    int fps = 15;
-    int cooldowntimer = -1;
-    int cooldown = -1;
+    int fps = 2;
+    int cooldowntimer = 2;
+    int cooldown = 2;
     char loop = 1;
     int statechange = 0;
+
+    int position = busybeaver->getSeq()*TAPESIZE + busybeaver->getPos();
+    int cooldownendpoint1 = position;
+    int cooldownendpoint2 = position;
+    
+    // Begin turing machine
     while (loop)
     {
         unsigned color = busybeaver->getColor();
@@ -116,10 +122,10 @@ void display() {
         tape = busybeaver->getTape();
 
         // Draw a Red 1x1 Square centered at origin
-        if (( state != 3 && state != 2 && state != 5 && state != 6) && (statechange || increase) || !cooldowntimer) {
+        if ( (statechange || increase) || !cooldowntimer ) {
             // Turing machine
             std::cout << "\n" << "State   : " << busybeaver->getState() << " @ " << busybeaver->getColor() << ", Delta = " << busybeaver->getTransitionStr() << "\n" ;
-            std::cout << "Position:" << std::setw(12) << (int)(busybeaver->getSeq()*TAPESIZE + busybeaver->getPos()) - TAPESIZE / 2 << " " ;
+            std::cout << "Position:" << std::setw(12) << position - TAPESIZE / 2 << " " ;
             std::cout << "[" << (int)(busybeaver->getMinseq()[0]*TAPESIZE + busybeaver->getMinseq()[1]) - TAPESIZE / 2<< ",";
             std::cout << (int)(busybeaver->getMaxseq()[0]*TAPESIZE + busybeaver->getMaxseq()[1]) - TAPESIZE / 2<< "]\n";
             std::cout << "Steps   :" << std::setw(12) << busybeaver->getSteps() << "\t" << "\n";
@@ -137,9 +143,16 @@ void display() {
                 {
                     int k = ((period/TAPESIZE - 1)/2 + segment->getSeq())*TAPESIZE + pos;
                     char otherposition = segment->getSeq() != busybeaver->getSeq() || pos != busybeaver->getPos();
+                    char scanposition = segment->getSeq()*TAPESIZE + pos;
+                    if (cooldownendpoint1 > cooldownendpoint2) {
+                        int temp = cooldownendpoint2;
+                        cooldownendpoint2 = cooldownendpoint1;
+                        cooldownendpoint1 = temp;
+                        std::cout << cooldownendpoint1 << "-" << cooldownendpoint2 << "\n";
+                    }
                     if (segment->getColor(pos) == 1 || !otherposition)
                     {
-                        if (!otherposition) {
+                        if (!otherposition || cooldownendpoint2 - cooldownendpoint1 >= 2 && cooldownendpoint1 <= scanposition && scanposition <= cooldownendpoint2) {
                             glColor3f(colormap[state][0], colormap[state][1], colormap[state][2]);
                         }
                         else {
@@ -159,7 +172,12 @@ void display() {
                             }
                         }
                         if (!otherposition && s < 2.0f/SIDE) {
-                            glColor3f(colormap[state][0], colormap[state][1], colormap[state][2]);
+                            if (!otherposition) {
+                                glColor3f(colormap[state][0], colormap[state][1], colormap[state][2]);
+                            }
+                            else {
+                                glColor3f(1.0f, 1.0f, 1.0f);
+                            }
                             glVertex2f(-1.f + k * s, 1.f - i * s/r); // x, y
                             glVertex2f(-1.f + (k + 1) * s + 2.0f/SIDE, 1.f - i * s/r);
                             glVertex2f(-1.f + (k + 1) * s + 2.0f/SIDE, 1.f - (i + 1) * s/r + 2.0f/SIDE);
@@ -193,17 +211,19 @@ void display() {
                     glVertex2f(-1.f + (pos + 1.f/16) * s, -1.f + (1 - 1.f/16)*s/r);
                 }
             }
-
-            if (false && busybeaver->getSteps() < 47176870 - TAPESIZE)
+            cooldownendpoint1 = position;
+            cooldownendpoint2 = position;
+            if (true || busybeaver->getSteps() < 47176870 - TAPESIZE)
                 usleep(1E6/fps);
             else
                 usleep(1E6/4);
-
+            
             glEnd();
             glFlush();
             cooldowntimer = cooldown;
         }
         else {
+            cooldownendpoint2 = position;
             if (cooldowntimer > 0)
                 cooldowntimer--;
             increase = 0;
@@ -222,25 +242,22 @@ void display() {
         }
 
         statechange = busybeaver->step() - state;
+        position = busybeaver->getSeq()*TAPESIZE + busybeaver->getPos();        
 
         if (increase) {
             i += increase;
             i %= (int)(2*period*r*127/128);
             if (!i) {
                 int seqdiff = busybeaver->getMaxseq()[0] - busybeaver->getMinseq()[0];
-                if (period < 1024) {
+
+                if (seqdiff >= period/TAPESIZE || !seqdiff && busybeaver->getMaxseq()[1] - busybeaver->getMinseq()[1] < TAPESIZE*7/8) {
                     period *= 2;
-                }
                     if (fps < 65536)
                         fps *= 2;
-                // while (seqdiff >= period/TAPESIZE || !seqdiff && busybeaver->getMaxseq()[1] - busybeaver->getMinseq()[1] < TAPESIZE*7/8) {
-                //     period *= 2;
-                //     if (fps < 65536)
-                //         fps *= 2;
-                //     else if (cooldown < 1000000000 && cooldown > 0) { 
-                //         cooldown = cooldown ? 2*(cooldown + 1)-1: 1;
-                //     }
-                // }
+                    else if (cooldown < 1000000000 && cooldown > 0) { 
+                        cooldown = cooldown ? 2*(cooldown + 1)-1: 1;
+                    }
+                }
 
                 glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
                 glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)

@@ -194,7 +194,7 @@ private:
     TapeSegment *cursegment;
     InstructionSet *instructionset;
     int seq;
-    int pos;
+    unsigned pos;
     unsigned state;
     long unsigned long steps;
     std::vector<unsigned long long> score;
@@ -280,7 +280,7 @@ public:
         return this->cursegment->getColor(this->pos);
     }
 
-    unsigned getSeq() {
+    int getSeq() {
         return this->seq;
     }
 
