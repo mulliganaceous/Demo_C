@@ -111,13 +111,13 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)
     int i = 0;
     int period = TAPESIZE/2;
-    int fps = 1;
+    int fps = 144;
     long long cooldown = -1;
     long long cooldowntimer = cooldowntimer;
     char loop = 1;
     int statechange = 0;
 
-    long long position = busybeaver->getSeq()*TAPESIZE + busybeaver->getPos();
+    long long position = busybeaver->getSeq()*TAPESIZE + (int)busybeaver->getPos();
     long long cooldownendpoint1 = position;
     long long cooldownendpoint2 = position;
     int offsetseq = busybeaver->getSeq();
@@ -143,11 +143,13 @@ void display() {
         }
 
         // Set up skips and whitelists
-        if (period > 32) {
+        if (state == 4) {
+            whitelist = true;
+        }
+        if (true) {
             skip = true;
             if (state == 4) {
                 skip = false;
-                whitelist = true;
             }
             if ((statechange || increase)) {
                 if (cooldown != -1 || cooldown <= 256) {
@@ -156,19 +158,19 @@ void display() {
                     skip = false;
                 }
             }
-            if (whitelist) {
-                increase = true;
-            }
         }
-
+        if (whitelist) {
+            increase = true;
+        }
 
         // Draw a Red 1x1 Square centered at origin
         if ( !skip && (statechange || increase) || !cooldowntimer || whitelist ) {
             // Turing machine
             std::cout << "\n[*]State: " << busybeaver->getState() << " @ " << busybeaver->getColor() << ", Delta = " << busybeaver->getTransitionStr() << "\n" ;
             std::cout << "Position: " << std::setw(12) << position - TAPESIZE / 2 << " " ;
-            std::cout << "[" << (int)(busybeaver->getMinseq()[0]*TAPESIZE + busybeaver->getMinseq()[1]) - TAPESIZE / 2<< ",";
-            std::cout << (int)(busybeaver->getMaxseq()[0]*TAPESIZE + busybeaver->getMaxseq()[1]) - TAPESIZE / 2<< "]\n";
+            ///std::cout << "Position: " << "[" << busybeaver->getSeq() << "," << busybeaver->getPos() << "];
+            std::cout << "(" << busybeaver->getMinseq()[0]*TAPESIZE + busybeaver->getMinseq()[1] - TAPESIZE / 2<< ",";
+            std::cout << busybeaver->getMaxseq()[0]*TAPESIZE + busybeaver->getMaxseq()[1] - TAPESIZE / 2<< ")\n";
             std::cout << "Steps   : " << std::setw(12) << busybeaver->getSteps() << "\t" << "\n";
             std::cout << "Erased  : " << std::setw(12) << busybeaver->getScore()[0] << ",\t";
             for (int k = 1; k < busybeaver->getInstructionSet()->getColors(); k++) {
@@ -181,7 +183,7 @@ void display() {
             float sb = SIDE/TAPESIZE;
             if (true || period/SIDE/4 == 0 || i % (period/SIDE/4) == 0 || whitelist) {
                 for (TapeSegment *segment = tape->getLeftmost(); segment; segment = segment->getNext()) {
-                    int k = (-offset + segment->getSeq())*TAPESIZE - 1;
+                    int k = (-(offset + 0.25) + segment->getSeq())*TAPESIZE - 1;
                     for (int pos = 0; pos < TAPESIZE && segment; pos++) {
                         // Determine position and cooled down colors
                         k++;
@@ -294,10 +296,8 @@ void display() {
                     usleep(1000000);
                 }
             }
-            else if (true || busybeaver->getSteps() < 47176870 - TAPESIZE)
-                usleep(1E6/fps);
             else if (fps < 65536)
-                usleep(1E6/4);
+                usleep(1E6/fps);
             cooldowntimer = cooldown;
         }
         else {
@@ -306,12 +306,12 @@ void display() {
             if (cooldowntimer > 0)
                 cooldowntimer--;
             increase = 0;
-            if (busybeaver->getSteps() % (2<<24) == 0) {
+            if (busybeaver->getSteps() % (1<<30) == 0) {
                 // Turing machine
                 std::cout << "\n" << "   State: " << busybeaver->getState() << " @ " << busybeaver->getColor() << ", Delta = " << busybeaver->getTransitionStr() << "\n" ;
-                std::cout << "Position: " << std::setw(12) << (int)(busybeaver->getSeq()*TAPESIZE + busybeaver->getPos()) - TAPESIZE / 2 << " " ;
-                std::cout << "[" << (int)(busybeaver->getMinseq()[0]*TAPESIZE + busybeaver->getMinseq()[1]) - TAPESIZE / 2<< ",";
-                std::cout << (int)(busybeaver->getMaxseq()[0]*TAPESIZE + busybeaver->getMaxseq()[1]) - TAPESIZE / 2<< "]\n";
+                std::cout << "Position: " << std::setw(12) << position - TAPESIZE / 2 << " " ;
+                std::cout << "(" << (int)(busybeaver->getMinseq()[0]*TAPESIZE + busybeaver->getMinseq()[1]) - TAPESIZE / 2<< ",";
+                std::cout << (int)(busybeaver->getMaxseq()[0]*TAPESIZE + busybeaver->getMaxseq()[1]) - TAPESIZE / 2<< ")\n";
                 std::cout << "Steps   : " << std::setw(12) << busybeaver->getSteps() << "\t" << "\n";
                 std::cout << "Erased  : " << std::setw(12) << busybeaver->getScore()[0] << ",\t";
                 for (int k = 1; k < busybeaver->getInstructionSet()->getColors(); k++) {
@@ -324,13 +324,13 @@ void display() {
         int seqdistance = offsetseq - busybeaver->getSeq();
         statechange = busybeaver->step() - state;
         position = busybeaver->getSeq()*TAPESIZE + busybeaver->getPos();        
-        
+        offset = (busybeaver->getSeq() - period/TAPESIZE);
         if (increase) {
             i += increase;
             i %= (int)(2*period*r*31/32);
             if (!i) {
                 int seqdiff = busybeaver->getMaxseq()[0] - busybeaver->getMinseq()[0];
-                offset = (0 - period/TAPESIZE)/4;
+                offset = (busybeaver->getSeq() - period/TAPESIZE)/4;
                 if (seqdiff >= period/TAPESIZE || !seqdiff && busybeaver->getMaxseq()[1] - busybeaver->getMinseq()[1] < TAPESIZE*7/8) {
                     if (true) {
                         period *= 2;

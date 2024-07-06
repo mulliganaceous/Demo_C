@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iostream>
 
-#define TAPESIZE 64
+#define TAPESIZE 128
 
 class TapeSegment {
 private:
@@ -236,18 +236,16 @@ public:
             pos = TAPESIZE - 1;
             if (this->seq < this->tape->getLeftmost()->getSeq()) {
                 this->tape->extendLeft();
+                this->minseq[1] = TAPESIZE - 1;
+                this->minseq[0] = this->seq;
             }
             this->cursegment = this->cursegment->getPrev();
         }
         else {
             pos--;
-        }
-        if (this->seq < this->minseq[0]) {
-            this->minseq[0] = this->seq;
-            this->minseq[1] = TAPESIZE - 1;
-        }
-        else if (this->pos < this->minseq[1]) {
-            minseq[1] = this->pos;
+            if (this->seq == this->minseq[0] && this->pos < this->minseq[1]) {
+                minseq[1] = this->pos;
+            }
         }
     }
 
@@ -257,18 +255,16 @@ public:
             pos = 0;
             if (this->seq > this->tape->getRightmost()->getSeq()) {
                 this->tape->extendRight();
+                maxseq[0] = this->seq;
+                maxseq[1] = 0;
             }
             this->cursegment = this->cursegment->getNext();
         }
         else {
             pos++;
-        }
-        if (this->seq > this->maxseq[0]) {
-            maxseq[0] = this->seq;
-            maxseq[1] = 0;
-        }
-        else if (this->pos > this->maxseq[1]) {
-            maxseq[1] = this->pos;
+            if (this->seq == this->maxseq[0] && this->pos > this->maxseq[1]) {
+                maxseq[1] = this->pos;
+            }
         }
     }
 
@@ -317,14 +313,16 @@ public:
     }
 
     unsigned step() {
-        if (!state) {
+        if (!this->state) {
             return 0;
         }
+
         unsigned color = this->getColor();
+        unsigned writewith = this->instructionset->getWriteWith(this->state, color);
+        char direction = this->instructionset->getTransition(this->state, color);
         unsigned nextstate = this->instructionset->getNextState(this->state, this->getColor());
 
-        this->write(this->instructionset->getWriteWith(this->state, color));
-        char direction = this->instructionset->getTransition(this->state, color);
+        this->write(writewith);
         if (direction == 1) {
             this->moveRight();
         }
@@ -332,7 +330,8 @@ public:
             this->moveLeft();
         }
         this->state = nextstate;
-        steps++;
+        this->steps++;
+
         return this->state;
     }
 
