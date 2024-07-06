@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iostream>
 
-#define TAPESIZE 32
+#define TAPESIZE 64
 
 class TapeSegment {
 private:
@@ -243,8 +243,8 @@ public:
             pos--;
         }
         if (this->seq < this->minseq[0]) {
-            minseq[0] = this->seq;
-            minseq[1] = TAPESIZE - 1;
+            this->minseq[0] = this->seq;
+            this->minseq[1] = TAPESIZE - 1;
         }
         else if (this->pos < this->minseq[1]) {
             minseq[1] = this->pos;
